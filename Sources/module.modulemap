@@ -1,0 +1,4 @@
+framework module CodeCoverageKit {
+    header "CodeCoverageKit.h"
+    private header "InstrProfiling.h"
+}
