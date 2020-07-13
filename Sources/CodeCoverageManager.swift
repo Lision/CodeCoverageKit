@@ -6,6 +6,10 @@
 //  Copyright © 2020 Lision. All rights reserved.
 //
 
+#if targetEnvironment(simulator)
+// Not currently supported simulator
+#else
+
 #if SWIFT_PACKAGE
 import InstrProfiling
 #endif
@@ -137,3 +141,5 @@ import UIKit
         task.resume()
     }
 }
+
+#endif

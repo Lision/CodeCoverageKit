@@ -9,6 +9,10 @@
 #ifndef InstrProfiling_h
 #define InstrProfiling_h
 
+#if TARGET_IPHONE_SIMULATOR
+// Not currently supported simulator
+#else
+
 #import <CommonCrypto/CommonHMAC.h>
 
 #define CC_SHA256_DIGEST_LENGTH 32
@@ -21,5 +25,7 @@ FOUNDATION_EXPORT void __llvm_profile_set_filename(char *);
 FOUNDATION_EXPORT const char *__llvm_profile_get_filename(void);
 FOUNDATION_EXPORT int __llvm_profile_write_file(void);
 FOUNDATION_EXPORT int __llvm_profile_register_write_file_atexit(void);
+
+#endif
 
 #endif /* InstrProfiling_h */

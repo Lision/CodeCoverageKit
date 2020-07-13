@@ -5,6 +5,10 @@
 //  Created by 李鑫 on 2020/7/7.
 //
 
+#if targetEnvironment(simulator)
+// Not currently supported simulator
+#else
+
 #if SWIFT_PACKAGE
 import InstrProfiling
 #endif
@@ -24,3 +28,5 @@ class Encryptor {
         return "\(temp.map { String(format: "%02hhx", $0) }.joined())"
     }
 }
+
+#endif

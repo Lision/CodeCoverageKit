@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import CodeCoverageKit
+@testable import YFDCodeCoverageKit
 
 class CodeCoverageKitTests: XCTestCase {
 
