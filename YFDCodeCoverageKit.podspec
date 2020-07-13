@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'YFDCodeCoverageKit'
-  s.version = '0.1.0'
+  s.version = '0.2.0'
   s.summary = 'Automatically collect code coverage data being executed.'
   s.description = <<-DESC
 Automatically collect code coverage data being executed.
