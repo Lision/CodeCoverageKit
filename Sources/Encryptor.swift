@@ -5,9 +5,7 @@
 //  Created by 李鑫 on 2020/7/7.
 //
 
-#if targetEnvironment(simulator)
-// Not currently supported simulator
-#else
+#if !targetEnvironment(simulator)
 
 #if SWIFT_PACKAGE
 import InstrProfiling

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'YFDCodeCoverageKit'
-  s.version = '0.2.0'
+  s.version = '0.3.0'
   s.summary = 'Automatically collect code coverage data being executed.'
   s.description = <<-DESC
 Automatically collect code coverage data being executed.
@@ -16,4 +16,5 @@ U can find more info on the official website `coco.zhenguanyu.com`.
   s.source_files = 'Sources/**/*'
   s.exclude_files = 'Sources/**/*.plist'
   s.swift_version = '5.2'
+  s.dependency 'SSZipArchive', '~> 2.0'
 end
