@@ -19,6 +19,7 @@ import SSZipArchive
     public typealias AppID = String
 
     @objc public static let sharedInstance: CodeCoverageManager = CodeCoverageManager()
+    private static let maxFileDataCount = 1024 * 1024 * 256 // 256MB
     private static let bundleVersionKey = "com.coco.app.bundle.version"
     private static let fileName = "coco.profraw"
     private static let zipName = "coco.zip"
@@ -107,14 +108,30 @@ import SSZipArchive
             self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
         }
     }
-    
+
     func uploadProfrawFile(completionHandler: @escaping (String?, Bool) -> Void) {
         guard FileManager.default.fileExists(atPath: CodeCoverageManager.zipURL.path) else {
             completionHandler("\(CodeCoverageManager.zipURL.path) is not exist.", false)
             return
         }
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: CodeCoverageManager.zipURL.path) else {
+            completionHandler("\(CodeCoverageManager.zipURL.path) file attributes can not be read.", false)
+            return
+        }
+        guard let fileSize = attributes[.size] as? Int64, fileSize < CodeCoverageManager.maxFileDataCount else {
+            self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
+            self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
+            completionHandler("\(CodeCoverageManager.zipURL.path) file size is too large to process.", false)
+            return
+        }
         guard let cocoData = try? Data(contentsOf: CodeCoverageManager.zipURL), !cocoData.isEmpty else {
             completionHandler("coco data transfer failed.", false)
+            return
+        }
+        guard cocoData.count < CodeCoverageManager.maxFileDataCount else {
+            self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
+            self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
+            completionHandler("data count is too large to process.", false)
             return
         }
         guard let uploadUrl = URL(string: "http://coco.zhenguanyu.com/upload") else {
