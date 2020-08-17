@@ -16,5 +16,4 @@ U can find more info on the official website `coco.zhenguanyu.com`.
   s.source_files = 'Sources/**/*'
   s.exclude_files = 'Sources/**/*.plist'
   s.swift_version = '5.2'
-  s.dependency 'SSZipArchive', '~> 2.0'
 end

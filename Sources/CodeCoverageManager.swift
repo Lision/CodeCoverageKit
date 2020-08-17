@@ -13,7 +13,6 @@ import InstrProfiling
 #endif
 import Foundation
 import UIKit
-import SSZipArchive
 
 @objc(YFDCodeCoverageManager) public class CodeCoverageManager: NSObject {
     public typealias AppID = String
@@ -22,11 +21,8 @@ import SSZipArchive
     private static let maxFileDataCount = 1024 * 1024 * 256 // 256MB
     private static let bundleVersionKey = "com.coco.app.bundle.version"
     private static let fileName = "coco.profraw"
-    private static let zipName = "coco.zip"
     private static let fileURL: URL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         .appendingPathComponent(CodeCoverageManager.fileName, isDirectory: false)
-    private static let zipURL: URL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        .appendingPathComponent(CodeCoverageManager.zipName, isDirectory: false)
     private var appID = ""
     private let serialQueue = DispatchQueue(label: "com.coco.serial")
 
@@ -63,7 +59,7 @@ import SSZipArchive
         CodeCoverageManager.fileURL.path.withCString {
             __llvm_profile_set_filename(UnsafeMutablePointer(mutating: $0))
         }
-        print(String(cString: __llvm_profile_get_filename()))
+        assert(String(cString: __llvm_profile_get_filename()) == CodeCoverageManager.fileURL.path)
         __llvm_profile_initialize_file()
     }
 
@@ -85,7 +81,6 @@ import SSZipArchive
     @objc func uploadProfraw(_ timer: Timer) {
         serialQueue.async {
             guard __llvm_profile_write_file() == 0 else { return }
-            self.zipProfrawFile()
             self.uploadProfrawFile()
         }
     }
@@ -93,11 +88,10 @@ import SSZipArchive
     // MARK: Upload
     func uploadLastProfrawFileIfNeeded() {
         serialQueue.async {
-            self.zipProfrawFile()
             self.uploadProfrawFile()
         }
     }
-    
+
     func uploadProfrawFile() {
         uploadProfrawFile { (data, success) in
             guard success else {
@@ -105,32 +99,29 @@ import SSZipArchive
                 return
             }
             self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
-            self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
         }
     }
 
     func uploadProfrawFile(completionHandler: @escaping (String?, Bool) -> Void) {
-        guard FileManager.default.fileExists(atPath: CodeCoverageManager.zipURL.path) else {
-            completionHandler("\(CodeCoverageManager.zipURL.path) is not exist.", false)
+        guard FileManager.default.fileExists(atPath: CodeCoverageManager.fileURL.path) else {
+            completionHandler("\(CodeCoverageManager.fileURL.path) is not exist.", false)
             return
         }
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: CodeCoverageManager.zipURL.path) else {
-            completionHandler("\(CodeCoverageManager.zipURL.path) file attributes can not be read.", false)
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: CodeCoverageManager.fileURL.path) else {
+            completionHandler("\(CodeCoverageManager.fileURL.path) file attributes can not be read.", false)
             return
         }
         guard let fileSize = attributes[.size] as? Int64, fileSize < CodeCoverageManager.maxFileDataCount else {
             self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
-            self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
-            completionHandler("\(CodeCoverageManager.zipURL.path) file size is too large to process.", false)
+            completionHandler("\(CodeCoverageManager.fileURL.path) file size is too large to process.", false)
             return
         }
-        guard let cocoData = try? Data(contentsOf: CodeCoverageManager.zipURL), !cocoData.isEmpty else {
+        guard let cocoData = try? Data(contentsOf: CodeCoverageManager.fileURL), !cocoData.isEmpty else {
             completionHandler("coco data transfer failed.", false)
             return
         }
         guard cocoData.count < CodeCoverageManager.maxFileDataCount else {
             self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
-            self.deleteFile(atPath: CodeCoverageManager.zipURL.path)
             completionHandler("data count is too large to process.", false)
             return
         }
@@ -163,8 +154,8 @@ import SSZipArchive
                                    boundary: boundary)
         uploadData.appendFormFileData(cocoData,
                                       name: "file",
-                                      fileName: CodeCoverageManager.zipName,
-                                      mimeType: "application/zip",
+                                      fileName: CodeCoverageManager.fileName,
+                                      mimeType: "application/profraw",
                                       boundary: boundary)
         uploadData.appendFormBoundaryEnd(boundary: boundary)
         var request = URLRequest(url: uploadUrl)
@@ -193,15 +184,7 @@ import SSZipArchive
         }
         guard storedBundleVersion != currentBundleVersion else { return }
         deleteFile(atPath: CodeCoverageManager.fileURL.path)
-        deleteFile(atPath: CodeCoverageManager.zipURL.path)
         UserDefaults.standard.set(currentBundleVersion, forKey: CodeCoverageManager.bundleVersionKey)
-    }
-
-    func zipProfrawFile() {
-        guard FileManager.default.fileExists(atPath: CodeCoverageManager.fileURL.path) else { return }
-        deleteFile(atPath: CodeCoverageManager.zipURL.path)
-        SSZipArchive.createZipFile(atPath: CodeCoverageManager.zipURL.path,
-                                   withFilesAtPaths: [CodeCoverageManager.fileURL.path])
     }
 
     func deleteFile(atPath path: String) {
