@@ -13,12 +13,12 @@ import InstrProfiling
 #endif
 import Foundation
 import UIKit
+import Alamofire
 
 @objc(YFDCodeCoverageManager) public class CodeCoverageManager: NSObject {
     public typealias AppID = String
 
     @objc public static let sharedInstance: CodeCoverageManager = CodeCoverageManager()
-    private static let maxFileDataCount = 1024 * 1024 * 256 // 256MB
     private static let bundleVersionKey = "com.coco.app.bundle.version"
     private static let fileName = "coco.profraw"
     private static let fileURL: URL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -111,68 +111,46 @@ import UIKit
             completionHandler("\(CodeCoverageManager.fileURL.path) file attributes can not be read.", false)
             return
         }
-        guard let fileSize = attributes[.size] as? Int64, fileSize < CodeCoverageManager.maxFileDataCount else {
-            self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
-            completionHandler("\(CodeCoverageManager.fileURL.path) file size is too large to process.", false)
+        guard let fileSize = attributes[.size] as? Int64 else {
+            completionHandler("\(CodeCoverageManager.fileURL.path) file size load failed.", false)
             return
         }
-        guard let cocoData = try? Data(contentsOf: CodeCoverageManager.fileURL), !cocoData.isEmpty else {
-            completionHandler("coco data transfer failed.", false)
+        guard let modificationDate = attributes[.modificationDate] as? Date else {
+            completionHandler("\(CodeCoverageManager.fileURL.path) file modification date load failed.", false)
             return
         }
-        guard cocoData.count < CodeCoverageManager.maxFileDataCount else {
-            self.deleteFile(atPath: CodeCoverageManager.fileURL.path)
-            completionHandler("data count is too large to process.", false)
-            return
-        }
-        guard let uploadUrl = URL(string: "http://coco.zhenguanyu.com/upload") else {
-            completionHandler("verify upload api url failed.", false)
-            return
-        }
-        let boundary = UUID().uuidString
-        var uploadData = Data()
-        uploadData.appendFormField(name: "app_id",
-                                   value: appID,
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "app",
-                                   value: Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? "",
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "version",
-                                   value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "build_number",
-                                   value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "",
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "uuid",
-                                   value: UIDevice.current.identifierForVendor?.uuidString ?? "",
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "device_info",
-                                   value: String(data: try! JSONEncoder().encode(DeviceInfo()), encoding: .utf8) ?? "",
-                                   boundary: boundary)
-        uploadData.appendFormField(name: "hash",
-                                   value: Encryptor.SHA256Digest(data: cocoData),
-                                   boundary: boundary)
-        uploadData.appendFormFileData(cocoData,
-                                      name: "file",
-                                      fileName: CodeCoverageManager.fileName,
-                                      mimeType: "application/profraw",
-                                      boundary: boundary)
-        uploadData.appendFormBoundaryEnd(boundary: boundary)
-        var request = URLRequest(url: uploadUrl)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        let task = URLSession.shared.uploadTask(with: request, from: uploadData) { data, response, error in
-            if let error = error {
-                completionHandler(error.localizedDescription, false)
-                return
+
+        Alamofire.upload(
+            multipartFormData: { multipartFormData in
+                multipartFormData.append(self.appID.data(using: .utf8)!, withName: "app_id")
+                let app = Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? ""
+                multipartFormData.append(app.data(using: .utf8)!, withName: "app")
+                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                multipartFormData.append(version.data(using: .utf8)!, withName: "version")
+                let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+                multipartFormData.append(buildNumber.data(using: .utf8)!, withName: "build_number")
+                let uuid = UIDevice.current.identifierForVendor?.uuidString ?? ""
+                multipartFormData.append(uuid.data(using: .utf8)!, withName: "uuid")
+                let deviceInfo = String(data: try! JSONEncoder().encode(DeviceInfo()), encoding: .utf8) ?? ""
+                multipartFormData.append(deviceInfo.data(using: .utf8)!, withName: "device_info")
+                let hash = Encryptor.SHA256Digest(data: "\(fileSize)_\(modificationDate.timeIntervalSinceReferenceDate)".data(using: .utf8)!)
+                multipartFormData.append(hash.data(using: .utf8)!, withName: "hash")
+                multipartFormData.append(
+                    CodeCoverageManager.fileURL,
+                    withName: "file",
+                    fileName: CodeCoverageManager.fileName,
+                    mimeType: "application/profraw"
+                )
+        }, to: "http://coco.zhenguanyu.com/upload") { encodingResult in
+            switch encodingResult {
+            case .success(let upload, _, _):
+                upload.responseJSON { response in
+                    completionHandler(nil, true)
+                }
+            case .failure(let encodingError):
+                completionHandler(encodingError.localizedDescription, false)
             }
-            guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) else {
-                completionHandler("server error", false)
-                return
-            }
-            completionHandler(nil, true)
         }
-        task.resume()
     }
 
     // MARK: File
