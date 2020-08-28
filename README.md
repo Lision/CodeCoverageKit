@@ -1,5 +1,7 @@
 # CodeCoverageKit
 
+![](https://yfd-tool.oss-cn-beijing.aliyuncs.com/coco/coco_docs/logo.png)
+
 ## Installation
 
 CodeCoverageKit is available through [CocoaPods](https://cocoapods.org). To install
