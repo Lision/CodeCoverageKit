@@ -1,6 +1,6 @@
 # CodeCoverageKit
 
-![](https://yfd-tool.oss-cn-beijing.aliyuncs.com/coco/coco_docs/logo.png)
+![](https://yfd-tool.oss-cn-beijing.aliyuncs.com/coco/coco_docs/yfd_code_coverage_kit_logo.png)
 
 ## Installation
 
