@@ -23,6 +23,8 @@ import Alamofire
     private static let fileName = "coco.profraw"
     private static let fileURL: URL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         .appendingPathComponent(CodeCoverageManager.fileName, isDirectory: false)
+
+    @objc public var uploadURL = "http://coco.zhenguanyu.com/upload"
     private var appID = ""
     private let serialQueue = DispatchQueue(label: "com.coco.serial")
 
@@ -141,7 +143,7 @@ import Alamofire
                     fileName: CodeCoverageManager.fileName,
                     mimeType: "application/profraw"
                 )
-        }, to: "http://coco.zhenguanyu.com/upload") { encodingResult in
+        }, to: uploadURL) { encodingResult in
             switch encodingResult {
             case .success(let upload, _, _):
                 upload.responseJSON { response in
