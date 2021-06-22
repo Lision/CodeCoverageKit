@@ -12,7 +12,7 @@ U can find more info on the official website `coco.zhenguanyu.com`.
   s.author = { 'lixinbj05' => 'lixinbj05@fenbi.com' }
   s.source = { :git => 'ssh://gerrit.zhenguanyu.com:29418/ios-module-YFDCodeCoverageKit', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '9.0'
+  s.ios.deployment_target = '10.0'
   s.source_files = 'Sources/**/*'
   s.exclude_files = 'Sources/**/*.plist'
   s.swift_version = '5.2'
