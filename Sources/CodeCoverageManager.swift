@@ -122,8 +122,8 @@ import Alamofire
             return
         }
 
-        Alamofire.upload(
-            multipartFormData: { multipartFormData in
+        AF.upload(
+            multipartFormData: { (multipartFormData) in
                 multipartFormData.append(self.appID.data(using: .utf8)!, withName: "app_id")
                 let app = Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String ?? ""
                 multipartFormData.append(app.data(using: .utf8)!, withName: "app")
@@ -143,16 +143,14 @@ import Alamofire
                     fileName: CodeCoverageManager.fileName,
                     mimeType: "application/profraw"
                 )
-        }, to: uploadURL) { encodingResult in
-            switch encodingResult {
-            case .success(let upload, _, _):
-                upload.responseJSON { response in
+            }, to: uploadURL).response { (response) in
+                switch response.result {
+                case .success(_):
                     completionHandler(nil, true)
+                case .failure(let error):
+                    completionHandler(error.localizedDescription, false)
                 }
-            case .failure(let encodingError):
-                completionHandler(encodingError.localizedDescription, false)
             }
-        }
     }
 
     // MARK: File
